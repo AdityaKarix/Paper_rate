@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Total Paper Evaluation (CRUD + PDF + Responsive)</title>
+<style>
+:root {
+    --primary: #007bff;
+    --success: #28a745;
+    --danger: #dc3545;
+    --warning: #ffc107;
+    --bg-light: #f4f6fa;
+    --text-dark: #333;
+}
+
+body {
+    font-family: "Poppins", sans-serif;
+    background: var(--bg-light);
+    margin: 0;
+    padding: 25px;
+}
+
+h2 {
+    text-align: center;
+    color: var(--text-dark);
+    margin-bottom: 20px;
+}
+
+.container {
+    max-width: 1000px;
+    margin: auto;
+    background: #fff;
+    padding: 25px 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+form {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 25px;
+}
+
+label {
+    font-weight: 600;
+    color: var(--text-dark);
+    display: block;
+    margin-bottom: 5px;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+}
+
+button {
+    grid-column: span 2;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+button:hover { opacity: 0.9; }
+
+#saveBtn { background-color: var(--primary); }
+.pdf-btn { background-color: var(--success); margin-top: 10px; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 14px;
+    min-width: 900px;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    text-align: center;
+    padding: 8px;
+    white-space: nowrap;
+}
+
+th {
+    background: var(--primary);
+    color: white;
+}
+
+tr:nth-child(even) {
+    background: #f9f9f9;
+}
+
+.action-btn {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #fff;
+    font-weight: 500;
+    font-size: 13px;
+}
+.edit-btn { background-color: var(--warning); color: #000; }
+.delete-btn { background-color: var(--danger); }
+
+/* Responsive Layout */
+@media (max-width: 768px) {
+    form {
+        grid-template-columns: 1fr;
+    }
+    button {
+        grid-column: 1;
+    }
+    .container {
+        padding: 20px;
+    }
+}
+
+/* Table Scroll Wrapper */
+.table-wrapper {
+    overflow-x: auto;
+    margin-top: 15px;
+}
+
+.table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+.table-wrapper::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 5px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Total Paper Evaluation (CRUD + PDF)</h2>
+
+    <form id="paperForm">
+        <div><label>Paper Type</label><input type="text" id="paperType" required></div>
+        <div><label>Paper Size</label><input type="text" id="paperSize" required></div>
+        <div><label>Paper GSM</label><input type="number" id="paperGSM" required></div>
+        <div><label>Paper Rate (₹)</label><input type="number" id="paperRate" required></div>
+        <div>
+            <label>Paper Cut Size</label>
+            <select id="paperCutSize">
+                <option value="1">Full Sheet (1)</option>
+                <option value="2">Half (1/2)</option>
+                <option value="4" selected>A4 (1/4)</option>
+                <option value="5">A5 (1/5)</option>
+                <option value="6">A6 (1/6)</option>
+                <option value="8">A8 (1/8)</option>
+                <option value="10">A10 (1/10)</option>
+                <option value="12">A12 (1/12)</option>
+            </select>
+        </div>
+        <div><label>Rim Size (sheets/rim)</label><input type="number" id="rimSize" required></div>
+        <div><label>Billbook</label><input type="text" id="billbook"></div>
+        <div><label>Total Paper</label><input type="number" id="totalPaper" required></div>
+        <div><label>Printing (₹)</label><input type="number" id="printing" value="0"></div>
+        <div><label>Binding (₹)</label><input type="number" id="binding" value="0"></div>
+
+        <button type="button" id="saveBtn" onclick="savePaper()">Add Paper Entry</button>
+    </form>
+
+    <button class="pdf-btn" onclick="downloadPDF()">⬇️ Download PDF Report</button>
+
+    <div class="table-wrapper">
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th>Paper Type</th>
+                    <th>Size</th>
+                    <th>GSM</th>
+                    <th>Rate</th>
+                    <th>Cut Size</th>
+                    <th>Rim Size</th>
+                    <th>Billbook</th>
+                    <th>Total Paper</th>
+                    <th>Req Paper</th>
+                    <th>Total Amount (₹)</th>
+                    <th>Printing (₹)</th>
+                    <th>Binding (₹)</th>
+                    <th>Final Total (₹)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- PDF Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+let editIndex = -1;
+let paperData = [];
+
+function calculateValues(paper) {
+    const reqPaper = paper.totalPaper * (1 / paper.cutSize);
+    const totalAmount = (paper.rate / paper.rim) * reqPaper;
+    const finalTotal = totalAmount + paper.printing + paper.binding;
+    return { reqPaper, totalAmount, finalTotal };
+}
+
+function savePaper() {
+    const paper = {
+        type: document.getElementById('paperType').value.trim(),
+        size: document.getElementById('paperSize').value.trim(),
+        gsm: parseFloat(document.getElementById('paperGSM').value),
+        rate: parseFloat(document.getElementById('paperRate').value),
+        cutSize: parseFloat(document.getElementById('paperCutSize').value),
+        rim: parseFloat(document.getElementById('rimSize').value),
+        billbook: document.getElementById('billbook').value.trim(),
+        totalPaper: parseFloat(document.getElementById('totalPaper').value),
+        printing: parseFloat(document.getElementById('printing').value) || 0,
+        binding: parseFloat(document.getElementById('binding').value) || 0
+    };
+
+    if (editIndex === -1) {
+        paperData.push(paper);
+    } else {
+        paperData[editIndex] = paper;
+        editIndex = -1;
+        document.getElementById('saveBtn').textContent = "Add Paper Entry";
+    }
+
+    renderTable();
+    document.getElementById('paperForm').reset();
+}
+
+function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = "";
+
+    paperData.forEach((paper, index) => {
+        const { reqPaper, totalAmount, finalTotal } = calculateValues(paper);
+
+        const row = `
+            <tr>
+                <td>${paper.type}</td>
+                <td>${paper.size}</td>
+                <td>${paper.gsm}</td>
+                <td>${paper.rate.toFixed(2)}</td>
+                <td>1/${paper.cutSize}</td>
+                <td>${paper.rim}</td>
+                <td>${paper.billbook}</td>
+                <td>${paper.totalPaper}</td>
+                <td>${reqPaper.toFixed(2)}</td>
+                <td>${totalAmount.toFixed(2)}</td>
+                <td>${paper.printing.toFixed(2)}</td>
+                <td>${paper.binding.toFixed(2)}</td>
+                <td><strong>${finalTotal.toFixed(2)}</strong></td>
+                <td>
+                    <button class="action-btn edit-btn" onclick="editRow(${index})">Edit</button>
+                    <button class="action-btn delete-btn" onclick="deleteRow(${index})">Delete</button>
+                </td>
+            </tr>
+        `;
+        tbody.insertAdjacentHTML("beforeend", row);
+    });
+}
+
+function editRow(index) {
+    const paper = paperData[index];
+    document.getElementById('paperType').value = paper.type;
+    document.getElementById('paperSize').value = paper.size;
+    document.getElementById('paperGSM').value = paper.gsm;
+    document.getElementById('paperRate').value = paper.rate;
+    document.getElementById('paperCutSize').value = paper.cutSize;
+    document.getElementById('rimSize').value = paper.rim;
+    document.getElementById('billbook').value = paper.billbook;
+    document.getElementById('totalPaper').value = paper.totalPaper;
+    document.getElementById('printing').value = paper.printing;
+    document.getElementById('binding').value = paper.binding;
+
+    editIndex = index;
+    document.getElementById('saveBtn').textContent = "Update Paper Entry";
+}
+
+function deleteRow(index) {
+    if (confirm("Are you sure you want to delete this entry?")) {
+        paperData.splice(index, 1);
+        renderTable();
+    }
+}
+
+async function downloadPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'pt', 'a4');
+
+    const table = document.getElementById('resultTable');
+    const canvas = await html2canvas(table, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+
+    const imgWidth = 780;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    doc.text("Total Paper Evaluation Report", 40, 30);
+    doc.addImage(imgData, 'PNG', 40, 50, imgWidth, imgHeight);
+    doc.save('Total_Paper_Evaluation_Report.pdf');
+}
+</script>
+
+</body>
+</html>
